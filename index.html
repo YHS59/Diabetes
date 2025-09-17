@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>OpenDia - Diabetes Risk Predictor</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(to right, #e0f7fa, #e1f5fe);
+            font-family: 'Segoe UI', sans-serif;
+        }
+        .card {
+            border-radius: 1rem;
+        }
+        .form-label {
+            font-weight: 600;
+        }
+
+        /* Floating Chat Widget Button */
+        #chatgpt-widget-btn {
+            position: fixed;
+            bottom: 32px;
+            right: 32px;
+            z-index: 1050;
+            background: linear-gradient(90deg, #0d6efd, #6610f2);
+            color: #fff;
+            border: none;
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 2rem;
+            transition: box-shadow 0.2s;
+        }
+        #chatgpt-widget-btn:hover {
+            box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+        }
+        #chatgpt-widget-window {
+            position: fixed;
+            bottom: 100px;
+            right: 40px;
+            z-index: 1060;
+            width: 350px;
+            max-width: 95vw;
+            background: #fff;
+            border-radius: 1rem;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+            display: none;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        @media (max-width: 500px) {
+            #chatgpt-widget-window {
+                right: 10px;
+                width: 98vw;
+            }
+        }
+
+        #chatgpt-widget-messages .rounded {
+            font-size: 0.85rem; /* or try 0.9rem for even smaller */
+        }
+    </style>
+</head>
+<body>
+
+<!-- Header -->
+<nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm">
+    <div class="container">
+        <a class="navbar-brand fw-bold" href="/">🩺 OpenDia</a>
+        <div class="ms-auto d-flex gap-2">
+            <a href="/history" class="btn btn-outline-primary">
+                📜 View History
+            </a>
+            <a href="/logout" class="btn btn-outline-danger">
+                🔒 Logout
+            </a>
+        </div>
+    </div>
+</nav>
+
+<!-- Form Section -->
+<div class="container mt-5">
+    <div class="card shadow p-4">
+        <h3 class="text-center mb-4">💉 Diabetes Risk Predictor</h3>
+
+        <form id="diabetes-form">
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label">Pregnancies</label>
+                    <input type="number" name="Pregnancies" class="form-control" placeholder="e.g. 0 - 10" min="0" max="20" required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Glucose</label>
+                    <input type="number" name="Glucose" class="form-control" placeholder="e.g. 70 - 200+" min="50" max="250" required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Blood Pressure</label>
+                    <input type="number" name="BloodPressure" class="form-control" placeholder="e.g. 50 - 130" min="40" max="180" required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Skin Thickness</label>
+                    <input type="number" name="SkinThickness" class="form-control" placeholder="e.g. 7 - 99" min="7" max="100" required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Insulin</label>
+                    <input type="number" name="Insulin" class="form-control" placeholder="e.g. 15 - 276" min="15" max="900" required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">BMI</label>
+                    <input type="number" step="0.1" name="BMI" class="form-control" placeholder="e.g. 18.0 - 50.0" min="10" max="70" required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Diabetes Pedigree Function</label>
+                    <input type="number" step="0.001" name="DiabetesPedigreeFunction" class="form-control" placeholder="e.g. 0.1 - 2.5" min="0.05" max="2.5" required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Age</label>
+                    <input type="number" name="Age" class="form-control" placeholder="e.g. 18 - 90" min="10" max="100" required>
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary w-100 mt-4">
+                🔍 Predict
+            </button>
+        </form>
+
+        <div id="result" class="mt-4"></div>
+
+        <!-- Latest Recommendation Section -->
+        {% if recommendations %}
+        <div class="alert alert-light border border-dark shadow-sm mt-4">
+            <h5 class="text-center">🧠 Latest Health Recommendation</h5>
+            <ul class="mt-3">
+                {% for item in recommendations %}
+                <li>{{ item }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+        </div>
+    </div>
+</div>
+
+
+<!-- Floating Chat Widget Button -->
+<button id="chatgpt-widget-btn" title="Chat with AI">
+    <i class="bi bi-robot"></i>
+</button>
+
+<div id="chatgpt-widget-window">
+    <div class="chatbox-header bg-primary text-white p-2 d-flex align-items-center justify-content-center position-relative">
+        <div class="w-100 text-center fw-bold">
+            <i class="bi bi-chat-dots-fill me-2"></i> Chatbox
+        </div>
+        <button id="chatgpt-widget-close" class="btn btn-sm btn-outline-light rounded-circle position-absolute end-0 top-0 m-2 d-flex align-items-center justify-content-center" style="width: 25px; height: 25px;">
+            <i class="bi bi-x-lg"></i>
+        </button>
+    </div>
+    <div id="chatgpt-widget-messages" class="card-body px-2 py-2" style="height: 270px; overflow-y: auto; background-color: #f2f5f9;">
+        <!-- Messages will appear here -->
+    </div>
+    <div class="card-footer bg-white p-2 border-top">
+        <form id="chatgpt-widget-form" class="d-flex gap-2">
+            <input type="text" id="chatgpt-widget-input" class="form-control rounded-pill shadow-sm" placeholder="Ask something..." autocomplete="off" required>
+            <button type="submit" class="btn btn-primary rounded-circle d-flex align-items-center justify-content-center shadow-sm" style="width: 38px; height: 38px;">
+                <i class="bi bi-send-fill"></i>
+            </button>
+        </form>
+    </div>
+</div>
+
+
+<script>
+function addMessage(sender, text) {
+    const messages = document.getElementById('chatgpt-widget-messages'); // Fixed ID
+    const messageBubble = document.createElement('div');
+    const isUser = sender === 'You';
+
+    messageBubble.className = `d-flex ${isUser ? 'justify-content-end' : 'justify-content-start'} mb-3`;
+
+    messageBubble.innerHTML = `
+        <div class="d-flex ${isUser ? 'flex-row-reverse' : ''} align-items-end" style="gap: 8px;">
+            <div class="rounded px-3 py-2 shadow-sm ${isUser ? 'bg-primary text-white' : 'bg-white border'}" style="max-width: 70%; word-wrap: break-word;">
+                <div class="small fw-bold mb-1">${sender}</div>
+                <div>${text}</div>
+            </div>
+            <div class="text-muted" style="font-size: 1.3rem;">
+                <i class="bi ${isUser ? 'bi-person-circle text-primary' : 'bi-robot text-success'}"></i>
+            </div>
+        </div>
+    `;
+    messages.appendChild(messageBubble);
+    messages.scrollTop = messages.scrollHeight;
+}
+
+
+function addWidgetMessage(sender, text) {
+    const messages = document.getElementById('chatgpt-widget-messages');
+    const messageBubble = document.createElement('div');
+    const isUser = sender === 'You';
+
+    messageBubble.className = `d-flex ${isUser ? 'justify-content-end' : 'justify-content-start'} mb-2`;
+
+    messageBubble.innerHTML = `
+        <div class="d-flex ${isUser ? 'flex-row-reverse' : ''} align-items-end" style="gap: 6px;">
+            <div class="rounded px-2 py-1 shadow-sm ${isUser ? 'bg-primary text-white' : 'bg-white border'}" style="max-width: 70%; word-wrap: break-word;">
+                <div class="small fw-bold mb-1">${sender}</div>
+                <div>${text}</div>
+            </div>
+            <div class="text-muted" style="font-size: 1.1rem;">
+                <i class="bi ${isUser ? 'bi-person-circle text-primary' : 'bi-robot text-success'}"></i>
+            </div>
+        </div>
+    `;
+    messages.appendChild(messageBubble);
+    messages.scrollTop = messages.scrollHeight;
+}
+
+
+// Floating Chat Widget logic
+const widgetBtn = document.getElementById('chatgpt-widget-btn');
+const widgetWindow = document.getElementById('chatgpt-widget-window');
+const widgetClose = document.getElementById('chatgpt-widget-close');
+const messages = document.getElementById('chatgpt-widget-messages');
+
+widgetBtn.onclick = () => {
+    widgetWindow.style.display = (widgetWindow.style.display === 'flex') ? 'none' : 'flex';
+    if (widgetWindow.style.display === 'flex') {
+        setTimeout(() => {
+            messages.scrollTop = messages.scrollHeight;
+        }, 50); // Scroll after chatbox is visible
+    }
+};
+
+widgetClose.onclick = () => widgetWindow.style.display = 'none';
+
+// Load chat history
+const chatHistory = {{ chat_history | tojson | safe }} || [];
+
+window.addEventListener("DOMContentLoaded", () => {
+    // Append all chat messages
+    chatHistory.forEach(entry => {
+        if (entry.role === 'user') {
+            addWidgetMessage('You', entry.content);
+        } else if (entry.role === 'assistant') {
+            addWidgetMessage('AI', entry.content);
+        }
+    });
+});
+
+
+
+document.getElementById('chatgpt-widget-form').onsubmit = async function(e) {
+    e.preventDefault();
+    const input = document.getElementById('chatgpt-widget-input');
+    const msg = input.value.trim();
+    if (!msg) return;
+    input.value = '';
+    addWidgetMessage('You', msg);
+
+    try {
+        const res = await fetch('/chatgpt', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message: msg })
+        });
+        const data = await res.json();
+        addWidgetMessage('AI', data.reply || '<span class="text-danger">No response</span>');
+    } catch {
+        addWidgetMessage('AI', '<span class="text-danger">Sorry, something went wrong.</span>');
+    }
+};
+
+
+// Diabetes form logic (keep this if you use the prediction form)
+const form = document.getElementById("diabetes-form");
+const resultDiv = document.getElementById("result");
+
+form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const formData = new FormData(form);
+    const data = Object.fromEntries(formData.entries());
+
+    for (let key in data) {
+        data[key] = parseFloat(data[key]);
+    }
+
+    const response = await fetch("/predict", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify(data)
+    });
+
+    const result = await response.json();
+
+    if (response.ok) {
+        resultDiv.innerHTML = `
+            <div class="alert alert-info">
+                <h5>🧾 Prediction saved! Reloading to show latest recommendation...</h5>
+            </div>
+        `;
+
+        setTimeout(() => {
+            window.location.href = "/";
+        }, 1500); // Reload after 1.5 seconds    
+    } else {
+        resultDiv.innerHTML = `<div class="alert alert-danger">❌ Error: ${result.error}</div>`;
+    }
+});
+</script>
+</body>
+</html>
+
+
+
